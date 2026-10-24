@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stockroom</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F2F5F3;
+    --card: #FFFFFF;
+    --ink: #14211F;
+    --muted: #5B6B67;
+    --line: #D5DDD9;
+    --pine: #1F5C4D;
+    --pine-dark: #174638;
+    --low: #B77700;
+    --low-bg: #FBF0D6;
+    --out: #A93226;
+    --out-bg: #F8E1DE;
+    --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --font-body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .page {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+  }
+  header.top { margin-bottom: 28px; }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 2rem;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  .sub { color: var(--muted); margin: 2px 0 0; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .panel-pad { padding: 20px; }
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.15rem;
+    margin: 0 0 16px;
+  }
+
+  label { display: block; font-weight: 500; font-size: 0.9rem; margin-bottom: 4px; }
+  .field { margin-bottom: 14px; }
+  input[type="text"], input[type="number"], input[type="search"] {
+    width: 100%;
+    font: inherit;
+    color: inherit;
+    padding: 9px 11px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+  }
+  input:focus-visible, button:focus-visible, th button:focus-visible {
+    outline: 3px solid #7FB8A8;
+    outline-offset: 1px;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  button.primary {
+    width: 100%;
+    font: inherit;
+    font-weight: 600;
+    color: #fff;
+    background: var(--pine);
+    border: 0;
+    border-radius: 6px;
+    padding: 11px 14px;
+    cursor: pointer;
+  }
+  button.primary:hover { background: var(--pine-dark); }
+  button.primary:disabled { opacity: 0.6; cursor: wait; }
+
+  .msg { min-height: 1.4em; margin: 12px 0 0; font-size: 0.9rem; }
+  .msg.ok { color: var(--pine); }
+  .msg.err { color: var(--out); }
+
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 36px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  .stat .num {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.6rem;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .lbl { color: var(--muted); font-size: 0.85rem; }
+
+  .toolbar { padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  .toolbar input { max-width: 320px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 720px; }
+  th, td { text-align: left; padding: 11px 20px; }
+  thead th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  th button {
+    all: unset;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  th button:hover { color: var(--ink); }
+  th[aria-sort="ascending"] button::after { content: " \2191"; }
+  th[aria-sort="descending"] button::after { content: " \2193"; }
+  tbody tr + tr td { border-top: 1px solid #E9EEEB; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.id { color: var(--muted); width: 56px; }
+  td.name { font-weight: 500; }
+
+  .stock { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+  .bar {
+    width: 90px; height: 8px; border-radius: 4px;
+    background: #E4EAE7; overflow: hidden; flex: none;
+  }
+  .bar i { display: block; height: 100%; background: var(--pine); border-radius: 4px; }
+  .bar.low i { background: var(--low); }
+  .bar.out i { background: var(--out); }
+  .qty { min-width: 2.5ch; font-variant-numeric: tabular-nums; }
+  .tag {
+    font-size: 0.75rem; font-weight: 600;
+    padding: 1px 7px; border-radius: 999px;
+  }
+  .tag.low { color: var(--low); background: var(--low-bg); }
+  .tag.out { color: var(--out); background: var(--out-bg); }
+
+  td.actions, th.actions { text-align: right; white-space: nowrap; }
+  button.act {
+    font: inherit; font-size: 0.85rem; font-weight: 600;
+    color: var(--ink); background: #fff;
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 4px 10px; margin-left: 6px; cursor: pointer;
+  }
+  button.act:hover { background: #EEF3F0; }
+  button.act.danger { color: var(--out); }
+  button.act.danger:hover { background: var(--out-bg); }
+  button.act.save { color: #fff; background: var(--pine); border-color: var(--pine); }
+  button.act.save:hover { background: var(--pine-dark); }
+  button.act:focus-visible { outline: 3px solid #7FB8A8; outline-offset: 1px; }
+  .cell-input { padding: 5px 8px; font: inherit; border: 1px solid var(--line); border-radius: 6px; width: 100%; }
+  td.num .cell-input { width: 110px; text-align: right; }
+
+  .side { display: grid; gap: 24px; }
+  select {
+    width: 100%; font: inherit; color: inherit; background: #fff;
+    padding: 9px 11px; border: 1px solid var(--line); border-radius: 6px;
+  }
+  select:focus-visible { outline: 3px solid #7FB8A8; outline-offset: 1px; }
+  button.secondary {
+    width: 100%; font: inherit; font-weight: 600; color: var(--pine); background: #fff;
+    border: 1px solid var(--pine); border-radius: 6px; padding: 9px 14px; cursor: pointer;
+  }
+  button.secondary:hover { background: #EEF3F0; }
+  .bill-lines { list-style: none; margin: 16px 0 0; padding: 0; }
+  .bill-lines li {
+    display: flex; align-items: center; gap: 8px; justify-content: space-between;
+    padding: 8px 0; border-top: 1px solid #E9EEEB; font-size: 0.9rem;
+  }
+  .bill-lines .l-name { flex: 1; font-weight: 500; }
+  .bill-lines .l-sub { display: block; color: var(--muted); font-size: 0.8rem; font-weight: 400; }
+  .bill-lines button {
+    all: unset; cursor: pointer; color: var(--out); font-weight: 700; padding: 0 6px; font-size: 1.1rem;
+  }
+  .bill-lines button:focus-visible { outline: 3px solid #7FB8A8; }
+  .bill-total {
+    display: flex; justify-content: space-between; font-weight: 700;
+    border-top: 2px solid var(--ink); margin: 4px 0 14px; padding-top: 10px;
+  }
+
+  dialog#invoice {
+    width: min(520px, 94vw); border: 1px solid var(--line); border-radius: 12px;
+    padding: 26px; color: var(--ink); background: #fff;
+  }
+  dialog#invoice::backdrop { background: rgba(20, 33, 31, 0.45); }
+  .inv-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .inv-head h2 { margin: 0; }
+  .inv-meta { text-align: right; color: var(--muted); font-size: 0.85rem; }
+  table.inv-table { min-width: 0; }
+  .inv-table th, .inv-table td { padding: 8px 6px; }
+  .inv-table tfoot td { border-top: 2px solid var(--ink); font-weight: 700; }
+  .inv-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .inv-actions button { width: auto; flex: 1; }
+  @media print {
+    .page { display: none !important; }
+    dialog#invoice { position: static; width: 100%; border: 0; padding: 0; }
+    .no-print { display: none !important; }
+  }
+
+  .empty { padding: 40px 20px; text-align: center; color: var(--muted); }
+  .empty strong { display: block; color: var(--ink); margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <h1>Stockroom</h1>
+    <p class="sub">Manage stock, create bills, and see what is on the shelf.</p>
+  </header>
+
+  <div class="layout">
+    <div class="side">
+    <section class="panel panel-pad" aria-labelledby="add-title">
+      <h2 id="add-title">Add a product</h2>
+      <div id="add-form" role="group" aria-labelledby="add-title">
+        <div class="field">
+          <label for="name">Product name</label>
+          <input id="name" type="text" autocomplete="off" placeholder="USB-C cable">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="price">Price (&#8377;)</label>
+            <input id="price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="299">
+          </div>
+          <div class="field">
+            <label for="quantity">Quantity</label>
+            <input id="quantity" type="number" min="0" step="1" inputmode="numeric" placeholder="50">
+          </div>
+        </div>
+        <button id="add-btn" class="primary" type="button">Add product</button>
+        <p id="msg" class="msg" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="panel panel-pad" aria-labelledby="bill-title">
+      <h2 id="bill-title">Create a bill</h2>
+      <div class="field">
+        <label for="bill-product">Product</label>
+        <select id="bill-product"></select>
+      </div>
+      <div class="field">
+        <label for="bill-qty">Quantity</label>
+        <input id="bill-qty" type="number" min="1" step="1" value="1" inputmode="numeric">
+      </div>
+      <button id="bill-add" class="secondary" type="button">Add to bill</button>
+      <ul id="bill-lines" class="bill-lines"></ul>
+      <div id="bill-footer" hidden>
+        <div class="bill-total"><span>Total</span><span id="bill-total">&#8377;0</span></div>
+        <button id="bill-btn" class="primary" type="button">Generate bill</button>
+      </div>
+      <p id="bill-msg" class="msg" role="status" aria-live="polite"></p>
+    </section>
+    </div>
+
+    <section class="panel" aria-label="Inventory">
+      <div class="stats">
+        <div class="stat"><div class="num" id="s-products">0</div><div class="lbl">Products</div></div>
+        <div class="stat"><div class="num" id="s-units">0</div><div class="lbl">Units in stock</div></div>
+        <div class="stat"><div class="num" id="s-value">&#8377;0</div><div class="lbl">Stock value</div></div>
+        <div class="stat"><div class="num" id="s-low">0</div><div class="lbl">Low or out of stock</div></div>
+      </div>
+      <div class="toolbar">
+        <label for="search" class="sr" style="position:absolute;left:-9999px">Search products</label>
+        <input id="search" type="search" placeholder="Search by product name">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-key="id" aria-sort="none"><button type="button">ID</button></th>
+              <th data-key="name" aria-sort="none"><button type="button">Product</button></th>
+              <th data-key="price" class="num" aria-sort="none"><button type="button">Price</button></th>
+              <th data-key="quantity" class="num" aria-sort="none"><button type="button">In stock</button></th>
+              <th data-key="value" class="num" aria-sort="none"><button type="button">Value</button></th>
+              <th class="actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div id="empty" class="empty" hidden></div>
+    </section>
+  </div>
+</div>
+
+<dialog id="invoice" aria-labelledby="inv-title">
+  <div class="inv-head">
+    <h2 id="inv-title">Invoice</h2>
+    <div class="inv-meta"><div id="inv-no"></div><div id="inv-date"></div></div>
+  </div>
+  <table class="inv-table">
+    <thead><tr><th>Item</th><th class="num">Price</th><th class="num">Qty</th><th class="num">Amount</th></tr></thead>
+    <tbody id="inv-rows"></tbody>
+    <tfoot><tr><td colspan="3">Grand total</td><td class="num" id="inv-total"></td></tr></tfoot>
+  </table>
+  <div class="inv-actions no-print">
+    <button id="inv-print" class="primary" type="button">Print</button>
+    <button id="inv-close" class="secondary" type="button">Close</button>
+  </div>
+</dialog>
+
+<script>
+  const API = "/api/inventory";
+  const LOW_STOCK = 10;
+  const BAR_FULL = 100; // a full bar means this many units or more
+  const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
+  const num = new Intl.NumberFormat("en-IN");
+
+  let products = [];
+  let sortKey = "id";
+  let sortDir = "ascending";
+  let query = "";
+  let loadFailed = false;
+  let editingId = null;
+  let focusEditRow = false;
+  let bill = [];
+
+  const $ = (id) => document.getElementById(id);
+
+  function setMsg(text, kind) {
+    const el = $("msg");
+    el.textContent = text;
+    el.className = "msg" + (kind ? " " + kind : "");
+  }
+
+  async function load() {
+    try {
+      const res = await fetch(API + "/");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      products = await res.json();
+      loadFailed = false;
+    } catch (e) {
+      loadFailed = true;
+    }
+    render();
+  }
+
+  async function addProduct() {
+    const name = $("name").value.trim();
+    const price = parseFloat($("price").value);
+    const quantity = parseInt($("quantity").value, 10);
+
+    if (!name) { setMsg("Enter a product name.", "err"); $("name").focus(); return; }
+    if (isNaN(price) || price < 0) { setMsg("Enter a price of 0 or more.", "err"); $("price").focus(); return; }
+    if (isNaN(quantity) || quantity < 0) { setMsg("Enter a whole-number quantity of 0 or more.", "err"); $("quantity").focus(); return; }
+
+    const btn = $("add-btn");
+    btn.disabled = true;
+    try {
+      const res = await fetch(API + "/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, price, quantity })
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const saved = await res.json();
+      products.push(saved);
+      $("name").value = ""; $("price").value = ""; $("quantity").value = "";
+      setMsg("Added " + saved.name + ".", "ok");
+      $("name").focus();
+      render();
+    } catch (e) {
+      setMsg("Could not add the product. Check that the app is running, then try again.", "err");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function actBtn(label, cls, handler, aria) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "act" + (cls ? " " + cls : "");
+    b.textContent = label;
+    if (aria) b.setAttribute("aria-label", aria);
+    b.addEventListener("click", handler);
+    return b;
+  }
+
+  function actionsCell(p) {
+    const td = document.createElement("td");
+    td.className = "actions";
+    td.append(
+      actBtn("Edit", "", () => { editingId = p.id; focusEditRow = true; render(); }, "Edit " + p.name),
+      actBtn("Remove", "danger", () => removeProduct(p), "Remove " + p.name)
+    );
+    return td;
+  }
+
+  function cellInput(type, value, label) {
+    const i = document.createElement("input");
+    i.type = type;
+    i.value = value;
+    i.className = "cell-input";
+    i.setAttribute("aria-label", label);
+    return i;
+  }
+
+  function editRow(p) {
+    const tr = document.createElement("tr");
+    const nameIn = cellInput("text", p.name, "Product name");
+    const priceIn = cellInput("number", p.price, "Price");
+    priceIn.min = "0"; priceIn.step = "0.01";
+    const qtyIn = cellInput("number", p.quantity, "Quantity");
+    qtyIn.min = "0"; qtyIn.step = "1";
+
+    const cell = (cls, child) => {
+      const td = document.createElement("td");
+      td.className = cls;
+      if (child) td.appendChild(child);
+      return td;
+    };
+    const idTd = cell("id");
+    idTd.textContent = p.id;
+
+    const save = () => saveEdit(p.id, nameIn.value.trim(), parseFloat(priceIn.value), parseInt(qtyIn.value, 10));
+    const cancel = () => { editingId = null; render(); };
+
+    [nameIn, priceIn, qtyIn].forEach(i => i.addEventListener("keydown", e => {
+      if (e.key === "Enter") save();
+      if (e.key === "Escape") cancel();
+    }));
+
+    const actions = cell("actions");
+    actions.append(
+      actBtn("Save", "save", save, "Save changes to " + p.name),
+      actBtn("Cancel", "", cancel, "Cancel editing " + p.name)
+    );
+
+    tr.append(idTd, cell("name", nameIn), cell("num", priceIn), cell("num", qtyIn), cell("num"), actions);
+    if (focusEditRow) { focusEditRow = false; setTimeout(() => qtyIn.focus(), 0); }
+    return tr;
+  }
+
+  async function saveEdit(id, name, price, quantity) {
+    if (!name) { setMsg("Enter a product name.", "err"); return; }
+    if (isNaN(price) || price < 0) { setMsg("Enter a price of 0 or more.", "err"); return; }
+    if (isNaN(quantity) || quantity < 0) { setMsg("Enter a whole-number quantity of 0 or more.", "err"); return; }
+    try {
+      const res = await fetch(API + "/" + id, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, price, quantity })
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const saved = await res.json();
+      products = products.map(x => x.id === id ? saved : x);
+      editingId = null;
+      setMsg("Updated " + saved.name + ".", "ok");
+      render();
+    } catch (e) {
+      setMsg("Could not update the product. Check that the app is running, then try again.", "err");
+    }
+  }
+
+  async function removeProduct(p) {
+    if (!confirm("Remove " + p.name + " from the inventory?")) return;
+    try {
+      const res = await fetch(API + "/" + p.id, { method: "DELETE" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      products = products.filter(x => x.id !== p.id);
+      if (editingId === p.id) editingId = null;
+      setMsg("Removed " + p.name + ".", "ok");
+      render();
+    } catch (e) {
+      setMsg("Could not remove the product. Check that the app is running, then try again.", "err");
+    }
+  }
+
+  function setBillMsg(text, kind) {
+    const el = $("bill-msg");
+    el.textContent = text;
+    el.className = "msg" + (kind ? " " + kind : "");
+  }
+
+  function refreshBillSelect() {
+    const sel = $("bill-product");
+    const keep = sel.value;
+    sel.textContent = "";
+    const inStock = products.filter(p => p.quantity > 0);
+    if (inStock.length === 0) {
+      const o = document.createElement("option");
+      o.value = ""; o.textContent = "No products in stock";
+      sel.appendChild(o);
+      return;
+    }
+    inStock.forEach(p => {
+      const o = document.createElement("option");
+      o.value = p.id;
+      o.textContent = p.name + " (" + num.format(p.quantity) + " left)";
+      sel.appendChild(o);
+    });
+    if (inStock.some(p => String(p.id) === keep)) sel.value = keep;
+  }
+
+  function renderBill() {
+    const ul = $("bill-lines");
+    ul.textContent = "";
+    let total = 0;
+    bill.forEach((l, i) => {
+      total += l.price * l.quantity;
+      const li = document.createElement("li");
+      const info = document.createElement("span");
+      info.className = "l-name";
+      info.textContent = l.name;
+      const sub = document.createElement("span");
+      sub.className = "l-sub";
+      sub.textContent = l.quantity + " x " + inr.format(l.price);
+      info.appendChild(sub);
+      const amt = document.createElement("span");
+      amt.textContent = inr.format(l.price * l.quantity);
+      const rm = document.createElement("button");
+      rm.type = "button";
+      rm.textContent = "\u00D7";
+      rm.setAttribute("aria-label", "Remove " + l.name + " from the bill");
+      rm.addEventListener("click", () => { bill.splice(i, 1); renderBill(); });
+      li.append(info, amt, rm);
+      ul.appendChild(li);
+    });
+    $("bill-total").textContent = inr.format(total);
+    $("bill-footer").hidden = bill.length === 0;
+  }
+
+  function addToBill() {
+    const id = parseInt($("bill-product").value, 10);
+    const qty = parseInt($("bill-qty").value, 10);
+    const p = products.find(x => x.id === id);
+    if (!p) { setBillMsg("Choose a product.", "err"); return; }
+    if (isNaN(qty) || qty < 1) { setBillMsg("Enter a quantity of 1 or more.", "err"); return; }
+    const line = bill.find(l => l.productId === id);
+    const already = line ? line.quantity : 0;
+    if (already + qty > p.quantity) {
+      setBillMsg("Only " + num.format(p.quantity) + " of " + p.name + " in stock.", "err");
+      return;
+    }
+    if (line) line.quantity += qty;
+    else bill.push({ productId: id, name: p.name, price: p.price, quantity: qty });
+    $("bill-qty").value = "1";
+    setBillMsg("", "");
+    renderBill();
+  }
+
+  function showInvoice(inv) {
+    $("inv-no").textContent = inv.invoiceNo;
+    $("inv-date").textContent = new Date(inv.date).toLocaleString("en-IN");
+    const body = $("inv-rows");
+    body.textContent = "";
+    inv.items.forEach(it => {
+      const tr = document.createElement("tr");
+      [it.name, inr.format(it.price), String(it.quantity), inr.format(it.lineTotal)].forEach((t, i) => {
+        const td = document.createElement("td");
+        td.textContent = t;
+        if (i > 0) td.className = "num";
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+    $("inv-total").textContent = inr.format(inv.grandTotal);
+    $("invoice").showModal();
+  }
+
+  async function generateBill() {
+    if (bill.length === 0) { setBillMsg("Add at least one item to the bill.", "err"); return; }
+    const btn = $("bill-btn");
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: bill.map(l => ({ productId: l.productId, quantity: l.quantity })) })
+      });
+      if (!res.ok) {
+        let reason = "";
+        try { reason = (await res.json()).message || ""; } catch (e) {}
+        throw new Error(reason || "Check the stock levels and try again.");
+      }
+      const inv = await res.json();
+      bill = [];
+      renderBill();
+      setBillMsg("Bill " + inv.invoiceNo + " created. Stock updated.", "ok");
+      showInvoice(inv);
+      await load();
+    } catch (e) {
+      setBillMsg("Could not create the bill. " + e.message, "err");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function render() {
+    // summary uses all products, not just the filtered ones
+    const units = products.reduce((s, p) => s + p.quantity, 0);
+    const value = products.reduce((s, p) => s + p.quantity * p.price, 0);
+    const low = products.filter(p => p.quantity < LOW_STOCK).length;
+    $("s-products").textContent = num.format(products.length);
+    $("s-units").textContent = num.format(units);
+    $("s-value").textContent = inr.format(value);
+    $("s-low").textContent = num.format(low);
+
+    const q = query.trim().toLowerCase();
+    let list = products.filter(p => !q || String(p.name).toLowerCase().includes(q));
+
+    const dir = sortDir === "ascending" ? 1 : -1;
+    list.sort((a, b) => {
+      const av = sortKey === "value" ? a.price * a.quantity : a[sortKey];
+      const bv = sortKey === "value" ? b.price * b.quantity : b[sortKey];
+      if (typeof av === "string") return av.localeCompare(bv) * dir;
+      return (av - bv) * dir;
+    });
+
+    document.querySelectorAll("thead th[data-key]").forEach(th => {
+      th.setAttribute("aria-sort", th.dataset.key === sortKey ? sortDir : "none");
+    });
+
+    const tbody = $("rows");
+    tbody.textContent = "";
+
+    list.forEach(p => {
+      if (p.id === editingId) { tbody.appendChild(editRow(p)); return; }
+      const tr = document.createElement("tr");
+
+      const tdId = document.createElement("td");
+      tdId.className = "id"; tdId.textContent = p.id;
+
+      const tdName = document.createElement("td");
+      tdName.className = "name"; tdName.textContent = p.name;
+
+      const tdPrice = document.createElement("td");
+      tdPrice.className = "num"; tdPrice.textContent = inr.format(p.price);
+
+      const tdStock = document.createElement("td");
+      tdStock.className = "num";
+      const wrap = document.createElement("div");
+      wrap.className = "stock";
+      const state = p.quantity === 0 ? "out" : p.quantity < LOW_STOCK ? "low" : "";
+      if (state) {
+        const tag = document.createElement("span");
+        tag.className = "tag " + state;
+        tag.textContent = state === "out" ? "Out" : "Low";
+        wrap.appendChild(tag);
+      }
+      const qty = document.createElement("span");
+      qty.className = "qty"; qty.textContent = num.format(p.quantity);
+      const bar = document.createElement("span");
+      bar.className = "bar " + state;
+      bar.setAttribute("aria-hidden", "true");
+      const fill = document.createElement("i");
+      fill.style.width = Math.min(100, Math.round((p.quantity / BAR_FULL) * 100)) + "%";
+      bar.appendChild(fill);
+      wrap.append(qty, bar);
+      tdStock.appendChild(wrap);
+
+      const tdValue = document.createElement("td");
+      tdValue.className = "num"; tdValue.textContent = inr.format(p.price * p.quantity);
+
+      tr.append(tdId, tdName, tdPrice, tdStock, tdValue, actionsCell(p));
+      tbody.appendChild(tr);
+    });
+
+    const empty = $("empty");
+    if (loadFailed) {
+      empty.hidden = false;
+      empty.innerHTML = "<strong>Can't reach the server</strong>Check that the app is running on port 8080, then reload this page.";
+    } else if (products.length === 0) {
+      empty.hidden = false;
+      empty.innerHTML = "<strong>No products yet</strong>Add your first product using the form.";
+    } else if (list.length === 0) {
+      empty.hidden = false;
+      empty.innerHTML = "<strong>No matches</strong>No product name contains that text.";
+    } else {
+      empty.hidden = true;
+    }
+    refreshBillSelect();
+  }
+
+  $("add-btn").addEventListener("click", addProduct);
+  ["name", "price", "quantity"].forEach(id =>
+    $(id).addEventListener("keydown", e => { if (e.key === "Enter") addProduct(); })
+  );
+  $("search").addEventListener("input", e => { query = e.target.value; render(); });
+  document.querySelectorAll("thead th[data-key]").forEach(th => {
+    th.querySelector("button").addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (sortKey === key) sortDir = sortDir === "ascending" ? "descending" : "ascending";
+      else { sortKey = key; sortDir = "ascending"; }
+      render();
+    });
+  });
+
+  $("bill-add").addEventListener("click", addToBill);
+  $("bill-qty").addEventListener("keydown", e => { if (e.key === "Enter") addToBill(); });
+  $("bill-btn").addEventListener("click", generateBill);
+  $("inv-print").addEventListener("click", () => window.print());
+  $("inv-close").addEventListener("click", () => $("invoice").close());
+
+  renderBill();
+  load();
+</script>
+</body>
+</html>
+
